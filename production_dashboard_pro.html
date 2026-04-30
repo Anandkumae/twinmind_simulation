@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TwinMind Digital Twin Dashboard</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Design System - AI SaaS Style */
+        :root {
+            --bg-main: #0f172a;
+            --bg-sidebar: #020617;
+            --bg-card: #1e293b;
+            --bg-input: #334155;
+            --primary: #6366f1;
+            --secondary: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        .dashboard {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 256px;
+            background: var(--bg-sidebar);
+            padding: 24px;
+            border-right: 1px solid var(--border);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 32px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.2s;
+            margin-bottom: 4px;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-card);
+            color: var(--text-main);
+        }
+
+        .nav-item.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        /* Top Bar */
+        .topbar {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 32px;
+            gap: 16px;
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .search-input {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            width: 320px;
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        /* Filters */
+        .filters {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+        }
+
+        .filter-select {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            min-width: 160px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        /* Machine Grid */
+        .machine-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        /* Machine Card */
+        .machine-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .machine-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .machine-header {
+            display: flex;
+            justify-content: between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .machine-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .machine-id {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-healthy {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--secondary);
+        }
+
+        .status-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .status-critical {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .status-collecting {
+            background: rgba(99, 102, 241, 0.2);
+            color: var(--primary);
+        }
+
+        /* Sensor Data */
+        .sensor-data {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .sensor-item {
+            text-align: center;
+        }
+
+        .sensor-label {
+            color: var(--text-muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .sensor-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .sensor-unit {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-left: 2px;
+        }
+
+        .sensor-trend {
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        /* RUL Section */
+        .rul-section {
+            border-top: 1px solid var(--border);
+            padding-top: 16px;
+            margin-top: 16px;
+        }
+
+        .rul-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .rul-label {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .health-bar {
+            height: 8px;
+            background: var(--bg-input);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .health-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .health-fill-healthy {
+            background: var(--secondary);
+        }
+
+        .health-fill-warning {
+            background: var(--warning);
+        }
+
+        .health-fill-critical {
+            background: var(--danger);
+        }
+
+        .health-fill-collecting {
+            background: var(--primary);
+        }
+
+        .health-score {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* Chart Container */
+        .chart-container {
+            margin-top: 16px;
+            height: 120px;
+            position: relative;
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 12px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-muted);
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            
+            .machine-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .filters {
+                flex-direction: column;
+            }
+            
+            .filter-select {
+                width: 100%;
+            }
+            
+            .search-input {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useMemo } = React;
+
+        // API Service
+        const API = axios.create({
+            baseURL: "http://127.0.0.1:8000",
+            timeout: 10000,
+        });
+
+        // WebSocket Manager
+        class WebSocketManager {
+            constructor(url = "ws://127.0.0.1:8000/ws") {
+                this.url = url;
+                this.ws = null;
+                this.listeners = new Map();
+            }
+
+            connect() {
+                try {
+                    this.ws = new WebSocket(this.url);
+                    
+                    this.ws.onopen = () => {
+                        console.log("🔗 WebSocket connected");
+                        this.emit('connected');
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            this.emit('message', data);
+                        } catch (error) {
+                            console.error("❌ WebSocket message parse error:", error);
+                        }
+                    };
+
+                    this.ws.onclose = () => {
+                        console.log("🔌 WebSocket disconnected");
+                        this.emit('disconnected');
+                        setTimeout(() => this.connect(), 2000);
+                    };
+
+                    this.ws.onerror = (error) => {
+                        console.error("❌ WebSocket error:", error);
+                    };
+
+                } catch (error) {
+                    console.error("❌ WebSocket connection failed:", error);
+                }
+            }
+
+            send(data) {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify(data));
+                }
+            }
+
+            on(event, callback) {
+                if (!this.listeners.has(event)) {
+                    this.listeners.set(event, []);
+                }
+                this.listeners.get(event).push(callback);
+            }
+
+            emit(event, data) {
+                if (this.listeners.has(event)) {
+                    this.listeners.get(event).forEach(callback => {
+                        try {
+                            callback(data);
+                        } catch (error) {
+                            console.error(`❌ Error in ${event} listener:`, error);
+                        }
+                    });
+                }
+            }
+        }
+
+        const wsManager = new WebSocketManager();
+
+        // Utility Functions
+        const utils = {
+            getHealthColor: (health) => {
+                const colors = {
+                    'HEALTHY': '#22c55e',
+                    'WARNING': '#f59e0b', 
+                    'CRITICAL': '#ef4444',
+                    'COLLECTING': '#6366f1'
+                };
+                return colors[health] || '#6b7280';
+            },
+
+            getRULStatus: (rul) => {
+                if (rul === null || rul === undefined) return 'COLLECTING';
+                if (rul >= 50) return 'HEALTHY';
+                if (rul >= 20) return 'WARNING';
+                return 'CRITICAL';
+            },
+
+            formatSensorValue: (value, decimals = 2) => {
+                if (value === null || value === undefined) return '--';
+                return Number(value).toFixed(decimals);
+            },
+
+            calculateHealthScore: (rul) => {
+                if (rul === null || rul === undefined) return 0;
+                if (rul >= 50) return 100;
+                if (rul >= 20) return 60 + (rul - 20) * 40 / 30;
+                return Math.max(0, rul * 3);
+            }
+        };
+
+        // Sidebar Component
+        const Sidebar = () => (
+            <div className="sidebar">
+                <div className="logo">
+                    🏭 TwinMind
+                </div>
+                <nav>
+                    <a href="#" className="nav-item active">
+                        📊 Dashboard
+                    </a>
+                    <a href="#" className="nav-item">
+                        🏭 Machines
+                    </a>
+                    <a href="#" className="nav-item">
+                        📈 Analytics
+                    </a>
+                    <a href="#" className="nav-item">
+                        ⚙️ Settings
+                    </a>
+                </nav>
+            </div>
+        );
+
+        // Topbar Component
+        const Topbar = ({ search, setSearch }) => (
+            <div className="topbar">
+                <h1 className="page-title">Digital Twin Dashboard</h1>
+                <input
+                    type="text"
+                    placeholder="Search machines..."
+                    className="search-input"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                />
+            </div>
+        );
+
+        // Filters Component
+        const Filters = ({ selectedMachine, setSelectedMachine, statusFilter, setStatusFilter, machines }) => (
+            <div className="filters">
+                <select
+                    value={selectedMachine}
+                    onChange={(e) => setSelectedMachine(e.target.value)}
+                    className="filter-select"
+                >
+                    <option value="ALL">All Machines</option>
+                    {Object.values(machines).map(machine => (
+                        <option key={machine.id} value={machine.id}>
+                            Machine {machine.id}
+                        </option>
+                    ))}
+                </select>
+
+                <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="filter-select"
+                >
+                    <option value="ALL">All Status</option>
+                    <option value="HEALTHY">Healthy</option>
+                    <option value="WARNING">Warning</option>
+                    <option value="CRITICAL">Critical</option>
+                    <option value="COLLECTING">Collecting</option>
+                </select>
+            </div>
+        );
+
+        // Machine Card Component
+        const MachineCard = ({ machine }) => {
+            const healthStatus = utils.getRULStatus(machine.rul);
+            const healthScore = utils.calculateHealthScore(machine.rul);
+            
+            return (
+                <div className="machine-card">
+                    <div className="machine-header">
+                        <div>
+                            <div className="machine-title">Machine {machine.id}</div>
+                            <div className="machine-id">ID: {machine.id}</div>
+                        </div>
+                        <span className={`status-badge status-${healthStatus.toLowerCase()}`}>
+                            {healthStatus}
+                        </span>
+                    </div>
+
+                    <div className="sensor-data">
+                        <div className="sensor-item">
+                            <div className="sensor-label">Temperature</div>
+                            <div className="sensor-value">
+                                {utils.formatSensorValue(machine.temperature)}
+                                <span className="sensor-unit">°C</span>
+                            </div>
+                        </div>
+                        <div className="sensor-item">
+                            <div className="sensor-label">Vibration</div>
+                            <div className="sensor-value">
+                                {utils.formatSensorValue(machine.vibration)}
+                                <span className="sensor-unit">Hz</span>
+                            </div>
+                        </div>
+                        <div className="sensor-item">
+                            <div className="sensor-label">Pressure</div>
+                            <div className="sensor-value">
+                                {utils.formatSensorValue(machine.pressure)}
+                                <span className="sensor-unit">kPa</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="rul-section">
+                        <div className="rul-value">
+                            {utils.formatSensorValue(machine.rul, 1)}
+                        </div>
+                        <div className="rul-label">Remaining Useful Life (cycles)</div>
+                        <div className="health-bar">
+                            <div 
+                                className={`health-fill health-fill-${healthStatus.toLowerCase()}`}
+                                style={{ width: `${healthScore}%` }}
+                            />
+                        </div>
+                        <div className="health-score">
+                            Health Score: {healthScore.toFixed(0)}%
+                        </div>
+                    </div>
+
+                    <div className="chart-container">
+                        <canvas id={`chart-${machine.id}`}></canvas>
+                    </div>
+                </div>
+            );
+        };
+
+        // Main Dashboard Component
+        const Dashboard = () => {
+            const [machines, setMachines] = useState({});
+            const [loading, setLoading] = useState(true);
+            const [selectedMachine, setSelectedMachine] = useState("ALL");
+            const [statusFilter, setStatusFilter] = useState("ALL");
+            const [search, setSearch] = useState("");
+            const [systemHealth, setSystemHealth] = useState(null);
+
+            // Load initial data
+            useEffect(() => {
+                const loadMachines = async () => {
+                    try {
+                        const response = await API.get("/machines");
+                        const machinesData = response.data.machines || [];
+                        
+                        const machinesObj = {};
+                        machinesData.forEach(machine => {
+                            machinesObj[machine.id] = {
+                                ...machine,
+                                history: [],
+                                temperature: null,
+                                vibration: null,
+                                pressure: null,
+                                rul: null,
+                                health: 'COLLECTING'
+                            };
+                        });
+                        
+                        setMachines(machinesObj);
+                        setLoading(false);
+                    } catch (error) {
+                        console.error("❌ Error loading machines:", error);
+                        setLoading(false);
+                    }
+                };
+
+                const loadSystemHealth = async () => {
+                    try {
+                        const response = await API.get("/system/health");
+                        setSystemHealth(response.data);
+                    } catch (error) {
+                        console.error("❌ Error loading system health:", error);
+                    }
+                };
+
+                loadMachines();
+                loadSystemHealth();
+            }, []);
+
+            // WebSocket connection
+            useEffect(() => {
+                wsManager.connect();
+
+                wsManager.on('message', (data) => {
+                    if (data.type === 'sensor_update') {
+                        setMachines(prev => {
+                            const updated = { ...prev };
+                            if (updated[data.machine_id]) {
+                                updated[data.machine_id] = {
+                                    ...updated[data.machine_id],
+                                    ...data.sensor_data,
+                                    rul: data.rul,
+                                    health: data.health,
+                                    lastUpdate: new Date()
+                                };
+                            }
+                            return updated;
+                        });
+                    }
+                });
+
+                return () => {
+                    wsManager.ws?.close();
+                };
+            }, []);
+
+            // Filter logic
+            const filteredMachines = useMemo(() => {
+                return Object.values(machines).filter(machine => {
+                    // Machine filter
+                    if (selectedMachine !== "ALL" && machine.id != selectedMachine) {
+                        return false;
+                    }
+
+                    // Status filter
+                    const healthStatus = utils.getRULStatus(machine.rul);
+                    if (statusFilter !== "ALL" && healthStatus !== statusFilter) {
+                        return false;
+                    }
+
+                    // Search filter
+                    if (search && !machine.name?.toLowerCase().includes(search.toLowerCase())) {
+                        return false;
+                    }
+
+                    return true;
+                });
+            }, [machines, selectedMachine, statusFilter, search]);
+
+            // Initialize charts
+            useEffect(() => {
+                Object.values(machines).forEach(machine => {
+                    const canvas = document.getElementById(`chart-${machine.id}`);
+                    if (canvas && !canvas.chart) {
+                        const ctx = canvas.getContext('2d');
+                        canvas.chart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: [],
+                                datasets: [{
+                                    label: 'Temperature',
+                                    data: [],
+                                    borderColor: '#6366f1',
+                                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                                    tension: 0.4,
+                                    fill: true
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        display: false
+                                    }
+                                },
+                                scales: {
+                                    x: {
+                                        display: false
+                                    },
+                                    y: {
+                                        display: false
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
+            }, [machines]);
+
+            if (loading) {
+                return (
+                    <div className="dashboard">
+                        <Sidebar />
+                        <div className="main-content">
+                            <div className="loading">
+                                <div className="spinner"></div>
+                                Loading dashboard...
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="dashboard">
+                    <Sidebar />
+                    <div className="main-content">
+                        <Topbar search={search} setSearch={setSearch} />
+                        <Filters 
+                            selectedMachine={selectedMachine}
+                            setSelectedMachine={setSelectedMachine}
+                            statusFilter={statusFilter}
+                            setStatusFilter={setStatusFilter}
+                            machines={machines}
+                        />
+                        
+                        {filteredMachines.length === 0 ? (
+                            <div className="empty-state">
+                                <h3>No machines found</h3>
+                                <p>Try adjusting your filters or search terms</p>
+                            </div>
+                        ) : (
+                            <div className="machine-grid">
+                                {filteredMachines.map(machine => (
+                                    <MachineCard key={machine.id} machine={machine} />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // Render app
+        ReactDOM.render(<Dashboard />, document.getElementById('root'));
+    </script>
+</body>
+</html>

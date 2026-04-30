@@ -4,6 +4,20 @@ A comprehensive Digital Twin platform for real-time machine monitoring, predicti
 
 ## 🌟 Key Features
 
+### 📊 Professional Dashboard
+- **SaaS-Level UI**: Professional dark theme with AI SaaS design system
+- **Real-Time Monitoring**: Multi-machine live monitoring with WebSocket streaming
+- **Advanced Filtering**: Machine selection, status filtering, and search functionality
+- **Responsive Design**: Mobile-friendly layout with modern components
+- **Interactive Charts**: Chart.js integration for trend visualization
+
+### 🗄️ Production Database Integration
+- **Supabase PostgreSQL**: Cloud database with automatic scaling
+- **Real-Time Persistence**: All sensor data, predictions, and anomalies stored
+- **Connection Pooling**: Efficient database resource management
+- **Data Analytics**: Historical data retrieval and analysis
+- **Backup & Security**: Managed database with enterprise security
+
 ### 📊 Real-Time Monitoring
 - **Multi-Machine Support**: Monitor multiple machines simultaneously
 - **Live Sensor Data**: Real-time temperature, vibration, and pressure readings
@@ -36,35 +50,41 @@ A comprehensive Digital Twin platform for real-time machine monitoring, predicti
 │   Frontend      │    │   Backend API   │    │   ML Engine    │
 │                 │    │                 │    │                 │
 │ • React Dashboard│◄──►│ • FastAPI       │◄──►│ • LSTM Models   │
-│ • Real-time UI   │    │ • WebSocket     │    │ • Rule-Based    │
-│ • Report UI     │    │ • Report API    │    │ • Predictions    │
-│ • Simulation     │    │ • Simulation    │    │ • Analytics     │
+│ • Professional UI│    │ • WebSocket     │    │ • Rule-Based    │
+│ • Real-time UI   │    │ • REST APIs     │    │ • Predictions    │
+│ • Filters/Search│    │ • Database ORM  │    │ • Analytics     │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          └───────────────────────┼───────────────────────┘
                                  │
-                    ┌─────────────────┐
-                    │   Simulator     │
-                    │                 │
-                    │ • Multi-Machine │
-                    │ • Realistic Data│
-                    │ • Degradation   │
-                    │ • Failure Modes │
-                    └─────────────────┘
+                    ┌─────────────────┐    ┌─────────────────┐
+                    │   Database     │    │   Simulator     │
+                    │                 │    │                 │
+                    │ • Supabase PG   │    │ • Multi-Machine │
+                    │ • Real-time     │    │ • Realistic Data│
+                    │ • Scalable      │    │ • Degradation   │
+                    │ • Cloud Backup  │    │ • Failure Modes │
+                    └─────────────────┘    └─────────────────┘
 ```
 
 ## 📁 Project Structure
 
 ```
 ├── 🎯 Core System
-│   ├── streaming_api.py          # FastAPI backend with WebSocket support
+│   ├── streaming_api_db.py       # FastAPI backend with Supabase integration
+│   ├── database.py               # SQLAlchemy ORM and database setup
+│   ├── models.py                 # Database models (machines, sensors, predictions)
+│   ├── schemas.py                # Pydantic schemas for API validation
+│   ├── services.py               # Business logic and database services
 │   ├── ml.py                     # Machine learning models and analytics
 │   ├── simulator.py              # Multi-machine simulation engine
-│   └── streaming_demo.py         # System orchestration and demo
+│   └── streaming_demo_db.py      # Database-integrated demo system
 │
-├── 🌐 Frontend
-│   ├── production_dashboard.html  # Professional React-based dashboard
-│   └── dashboard.html            # Legacy simple dashboard
+├── 🌐 Professional Frontend
+│   ├── production_dashboard_pro.html  # Professional React dashboard
+│   ├── production_dashboard.html       # Legacy dashboard
+│   ├── api.js                         # API helper with WebSocket management
+│   └── dashboard.html                  # Simple dashboard
 │
 ├── 🤖 Machine Learning
 │   ├── rul_prediction.py         # LSTM model training script
@@ -72,22 +92,67 @@ A comprehensive Digital Twin platform for real-time machine monitoring, predicti
 │   ├── lstm_rul_model.h5         # Trained LSTM model
 │   └── scaler.pkl                # Fitted data scaler
 │
+├── 🗄️ Database & Setup
+│   ├── init_db.py                # Database initialization script
+│   ├── setup_supabase.py        # Automated Supabase setup
+│   └── streaming_demo_db.py      # Database-integrated demo
+│
 ├── 📊 Data & Models
 │   ├── test_results.csv          # Model performance results
 │   └── archive/                  # C-MAPSS dataset (optional)
 │
 ├── 📋 Documentation
 │   ├── README.md                 # This file
-│   ├── README_PRODUCTION.md      # Production deployment guide
+│   ├── USAGE.md                  # Detailed usage guide
 │   └── requirements.txt          # Python dependencies
 │
-└── ⚙️ Configuration
-    └── .gitignore                # Git ignore file
+├── ⚙️ Configuration
+│   ├── .env.example              # Environment template
+│   ├── .env                      # Environment variables
+│   └── .gitignore                # Git ignore file
+│
+└── 🐳 Deployment
+    ├── Dockerfile                # Docker configuration
+    ├── docker-compose.yml        # Multi-container setup
+    └── LICENSE                   # MIT License
 ```
 
 ## 🚀 Quick Start
 
-### 1. Installation
+### Option 1: Supabase Production Setup (Recommended)
+
+#### **Step 1: Setup Supabase Database**
+```bash
+# 1. Create Supabase account at https://supabase.com
+# 2. Create new project
+# 3. Get connection string from Settings → Database → Connection String
+# 4. Update .env file with your connection string
+```
+
+#### **Step 2: Automated Setup**
+```bash
+# Run the automated setup script
+python setup_supabase.py
+
+# This will:
+# ✅ Install dependencies
+# ✅ Create .env file
+# ✅ Initialize database
+# ✅ Create sample machines
+```
+
+#### **Step 3: Start Production System**
+```bash
+# Start the database-integrated API
+python streaming_api_db.py
+
+# Run the enhanced demo
+python streaming_demo_db.py
+```
+
+### Option 2: Local Development Setup
+
+#### **Step 1: Installation**
 ```bash
 # Clone the repository
 git clone <repository-url>
@@ -97,16 +162,56 @@ cd Digital_twin
 pip install -r requirements.txt
 ```
 
-### 2. Start the Complete System
+#### **Step 2: Setup Environment**
 ```bash
-# Run the full demo (API + Simulator + Dashboard)
-python streaming_demo.py demo
+# Copy environment template
+cp .env.example .env
+
+# Edit .env file (uses SQLite by default)
+# DATABASE_URL=sqlite:///./digital_twin.db
 ```
 
-### 3. Access the Dashboard
+#### **Step 3: Initialize Database**
+```bash
+# Initialize database with sample data
+python init_db.py init
+```
+
+#### **Step 4: Start the System**
+```bash
+# Start the database-integrated API
+python streaming_api_db.py
+
+# Run the enhanced demo
+python streaming_demo_db.py
+```
+
+### 3. Access the Professional Dashboard
 Open your browser and navigate to:
 ```
-http://localhost:8000/dashboard
+📊 Professional Dashboard: http://localhost:8000/
+🎯 Professional Only: http://localhost:8000/dashboard/pro
+📊 Alternative: http://localhost:8000/dashboard
+📊 Legacy: http://localhost:8000/dashboard/legacy
+```
+
+### 4. Verify Database Integration
+Check the API health endpoint:
+```
+http://localhost:8000/health
+```
+
+You should see:
+```json
+{
+  "status": "healthy",
+  "database_connected": true,
+  "database_type": "PostgreSQL",
+  "system_health": {
+    "total_machines": 5,
+    "system_health_score": 100.0
+  }
+}
 ```
 
 ### 4. Alternative Startup Options
@@ -128,13 +233,27 @@ python streaming_demo.py test
 
 ## 🎮 Using the System
 
-### 📊 Dashboard Features
+### 📊 Professional Dashboard Features
 
 #### **Machine Monitoring**
-- Real-time machine cards with health status
-- Live sensor readings (temperature, vibration, pressure)
-- RUL predictions and health scores
-- Anomaly alerts and warnings
+- **Professional UI**: SaaS-level dark theme with modern components
+- **Real-time Cards**: Live machine status with health scoring
+- **Advanced Filtering**: Machine selection, status filtering, and search
+- **Live Sensor Data**: Real-time temperature, vibration, pressure readings
+- **Health Visualization**: Color-coded status badges and health bars
+- **Trend Charts**: Chart.js integration for historical data
+
+#### **WebSocket Streaming**
+- **Real-time Updates**: Instant data without page refresh
+- **Auto-reconnect**: Robust connection management
+- **Live Predictions**: ML predictions updated in real-time
+- **Anomaly Alerts**: Immediate notification of issues
+
+#### **Search & Filter System**
+- **Machine Filter**: Select specific machines or view all
+- **Status Filter**: Filter by HEALTHY/WARNING/CRITICAL/COLLECTING
+- **Real-time Search**: Instant machine search functionality
+- **Smart Filtering**: Combined filter logic with performance
 
 #### **What-If Simulation**
 - Interactive parameter sliders
@@ -151,8 +270,13 @@ python streaming_demo.py test
 ### 🔌 API Endpoints
 
 #### **Core Endpoints**
-- `GET /health` - System health check
+- `GET /health` - System health check with database status
+- `GET /system/health` - Comprehensive system metrics
 - `GET /machines` - List all active machines
+- `GET /machines/{id}` - Get machine details
+- `GET /machines/{id}/latest` - Get latest sensor data
+- `GET /machines/{id}/predictions` - Get prediction history
+- `GET /machines/{id}/anomalies` - Get anomaly records
 - `POST /sensor-data` - Submit sensor readings
 - `POST /sensor-data-full` - Submit full sensor data
 
@@ -163,6 +287,12 @@ python streaming_demo.py test
 
 #### **Reporting**
 - `POST /generate-report` - Generate comprehensive reports
+
+#### **Dashboard Endpoints**
+- `GET /` - Professional dashboard (default)
+- `GET /dashboard` - Alternative dashboard
+- `GET /dashboard/pro` - Professional dashboard only
+- `GET /dashboard/legacy` - Legacy dashboard
 
 #### **WebSocket**
 - `WS /ws` - Real-time data streaming
@@ -243,41 +373,80 @@ print(f"Risk Level: {result['risk_level']}")
 
 ### **Dependencies**
 ```txt
+# Core Framework
 fastapi>=0.68.0
 uvicorn>=0.15.0
+
+# Database Integration
+sqlalchemy>=1.4.0
+psycopg2-binary>=2.9.0
+alembic>=1.7.0
+python-dotenv>=0.19.0
+
+# Machine Learning
 tensorflow>=2.8.0
 scikit-learn>=1.0.0
 pandas>=1.3.0
 numpy>=1.21.0
+joblib>=1.1.0
+
+# API & Web
 websockets>=10.0
 pydantic>=1.8.0
+python-multipart>=0.0.5
+
+# Optional Production
+redis>=4.0.0
+celery>=5.2.0
 ```
 
 ### **Performance Metrics**
 - **API Response Time**: <100ms
 - **WebSocket Latency**: <50ms
+- **Database Queries**: <200ms (Supabase optimized)
 - **Concurrent Users**: 100+
 - **Data Throughput**: 1000+ messages/second
+- **Database Scalability**: Unlimited (Supabase cloud)
+- **Real-time Updates**: Sub-second WebSocket streaming
 
 ## 🌟 Advanced Features
+
+### **Professional Frontend**
+- **SaaS-Level Design**: AI SaaS style with dark theme
+- **Component Architecture**: Reusable React components
+- **State Management**: Efficient real-time state updates
+- **Chart.js Integration**: Professional data visualization
+- **Responsive Design**: Mobile-optimized layout
+- **Search & Filtering**: Advanced filtering system
+
+### **Supabase Database Integration**
+- **Cloud PostgreSQL**: Managed database with automatic scaling
+- **Real-time Persistence**: All data stored in cloud database
+- **Connection Pooling**: Efficient resource management
+- **Data Analytics**: Historical data retrieval and analysis
+- **Backup & Security**: Enterprise-grade data protection
+- **REST APIs**: Complete CRUD operations
 
 ### **Multi-Machine Simulation**
 - 5 simultaneous machines with different failure patterns
 - Realistic sensor degradation modeling
 - Configurable failure modes (gradual, sudden, intermittent)
 - Real-time data generation and broadcasting
+- Database persistence of simulation data
 
 ### **Intelligent Analytics**
 - Health scoring algorithm (0-100 scale)
 - Risk level assessment (LOW, MEDIUM, HIGH, CRITICAL)
 - Predictive maintenance recommendations
 - Cost estimation for maintenance planning
+- Anomaly detection with severity levels
 
 ### **Professional Reporting**
 - Executive summaries with key insights
 - Detailed machine-by-machine analysis
 - Performance metrics and benchmarking
 - Actionable recommendations with priority levels
+- Multiple export formats (HTML, JSON, PDF)
 
 ## 📚 Documentation
 
@@ -297,11 +466,14 @@ pydantic>=1.8.0
 
 ### **Development Environment**
 ```bash
-# Start development server
-python streaming_demo.py demo
+# Start development server with database
+python streaming_api_db.py
 
-# Access dashboard
-http://localhost:8000/dashboard
+# Run database-integrated demo
+python streaming_demo_db.py
+
+# Access professional dashboard
+http://localhost:8000/
 ```
 
 ### **Production Deployment**
@@ -310,16 +482,27 @@ http://localhost:8000/dashboard
 docker build -t digital-twin .
 docker run -p 8000:8000 digital-twin
 
+# Using docker-compose (with database)
+docker-compose up -d
+
 # Using systemd
 sudo systemctl start digital-twin
 ```
 
 ### **Environment Variables**
 ```bash
-export API_HOST=0.0.0.0
-export API_PORT=8000
-export LOG_LEVEL=INFO
-export MAX_MACHINES=50
+# Database Configuration
+DATABASE_URL=postgresql://user:pass@host:5432/db
+
+# API Configuration
+API_HOST=0.0.0.0
+API_PORT=8000
+LOG_LEVEL=INFO
+MAX_MACHINES=50
+
+# Supabase (optional)
+SUPABASE_URL=your-supabase-url
+SUPABASE_KEY=your-supabase-key
 ```
 
 ## 🔒 Security Considerations
