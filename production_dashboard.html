@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TwinMind Dashboard - Industrial Monitoring</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @keyframes pulse-critical {
+            0%, 100% { 
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+                border-color: rgb(239, 68, 68);
+            }
+            50% { 
+                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+                border-color: rgb(220, 38, 38);
+            }
+        }
+        
+        @keyframes slide-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .critical-pulse {
+            animation: pulse-critical 2s infinite;
+        }
+        
+        .machine-card {
+            animation: slide-in 0.5s ease-out;
+        }
+        
+        .health-healthy { 
+            background: linear-gradient(135deg, rgb(34 197 94 / 0.1), rgb(34 197 94 / 0.05));
+            border-left: 4px solid rgb(34 197 94);
+        }
+        
+        .health-warning { 
+            background: linear-gradient(135deg, rgb(251 146 60 / 0.1), rgb(251 146 60 / 0.05));
+            border-left: 4px solid rgb(251 146 60);
+        }
+        
+        .health-critical { 
+            background: linear-gradient(135deg, rgb(239 68 68 / 0.1), rgb(239 68 68 / 0.05));
+            border-left: 4px solid rgb(239 68, 68);
+        }
+        
+        .health-collecting { 
+            background: linear-gradient(135deg, rgb(107 114 128 / 0.1), rgb(107 114 128 / 0.05));
+            border-left: 4px solid rgb(107 114 128);
+        }
+        
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .status-healthy { background-color: rgb(34 197 94); }
+        .status-warning { background-color: rgb(251 146 60); }
+        .status-critical { 
+            background-color: rgb(239 68 68);
+            animation: pulse-critical 2s infinite;
+        }
+        .status-collecting { background-color: rgb(107 114 128); }
+        
+        .chart-container {
+            position: relative;
+            height: 120px;
+        }
+        
+        .sidebar {
+            background: linear-gradient(180deg, rgb(17 24 39), rgb(31 41 55));
+        }
+        
+        .metric-value {
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100">
+    <!-- Sidebar -->
+    <div class="flex h-screen">
+        <div class="sidebar w-64 p-6 border-r border-gray-700">
+            <div class="mb-8">
+                <h1 class="text-2xl font-bold text-white mb-2">
+                    🚀 TwinMind
+                </h1>
+                <p class="text-gray-400 text-sm">Industrial Monitoring System</p>
+            </div>
+            
+            <!-- Connection Status -->
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm text-gray-400">Connection</span>
+                    <span id="connection-status" class="status-indicator status-collecting"></span>
+                </div>
+                <div id="connection-text" class="text-sm text-gray-500">Connecting...</div>
+            </div>
+            
+            <!-- System Stats -->
+            <div class="mb-6">
+                <h3 class="text-sm font-medium text-gray-400 mb-3">System Overview</h3>
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">Active Machines</span>
+                        <span id="active-machines" class="text-sm font-medium">0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">Critical</span>
+                        <span id="critical-count" class="text-sm font-medium text-red-400">0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">Warnings</span>
+                        <span id="warning-count" class="text-sm font-medium text-yellow-400">0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">Healthy</span>
+                        <span id="healthy-count" class="text-sm font-medium text-green-400">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filters -->
+            <div class="mb-6">
+                <h3 class="text-sm font-medium text-gray-400 mb-3">Filters</h3>
+                <div class="space-y-2">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="filter-healthy" checked class="mr-2">
+                        <span class="text-sm">Healthy</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="filter-warning" checked class="mr-2">
+                        <span class="text-sm">Warning</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="filter-critical" checked class="mr-2">
+                        <span class="text-sm">Critical</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="filter-collecting" checked class="mr-2">
+                        <span class="text-sm">Collecting</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Controls -->
+            <div class="space-y-2">
+                <button onclick="startDemo()" class="w-full bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition text-sm">
+                    🚀 Start Demo
+                </button>
+                <button onclick="addRandomMachine()" class="w-full bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition text-sm">
+                    ➕ Add Machine
+                </button>
+                <button onclick="resetAllMachines()" class="w-full bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition text-sm">
+                    🔄 Reset All
+                </button>
+                <button onclick="openReportModal()" class="w-full bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition text-sm">
+                    📊 Generate Report
+                </button>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="flex-1 overflow-auto">
+            <!-- Header -->
+            <header class="bg-gray-800 border-b border-gray-700 px-8 py-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-semibold">TwinMind Digital Twin</h2>
+                        <p class="text-gray-400 text-sm">Real-time monitoring & What-If Simulation</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span id="last-update" class="text-sm text-gray-400">Last update: --</span>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm text-gray-400">Live</span>
+                            <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Machine Grid -->
+            <main class="p-8">
+                <div id="machines-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+                    <!-- Machine cards will be inserted here -->
+                </div>
+                
+                <!-- What-If Simulation Section -->
+                <div class="bg-gray-800 rounded-xl p-6 shadow-lg">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xl font-semibold flex items-center">
+                            🔮 What-If Simulation
+                        </h3>
+                        <span class="text-sm text-gray-400">Test scenarios without touching real equipment</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Controls Section -->
+                        <div>
+                            <h4 class="text-lg font-medium mb-4">Simulation Parameters</h4>
+                            
+                            <!-- Temperature Slider -->
+                            <div class="mb-6">
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="text-sm font-medium">Temperature</label>
+                                    <span id="temp-value" class="text-sm font-mono bg-gray-700 px-2 py-1 rounded">50°C</span>
+                                </div>
+                                <input type="range" id="temp-slider" min="20" max="120" value="50" 
+                                       class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>20°C</span>
+                                    <span>120°C</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Vibration Slider -->
+                            <div class="mb-6">
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="text-sm font-medium">Vibration</label>
+                                    <span id="vib-value" class="text-sm font-mono bg-gray-700 px-2 py-1 rounded">5.0 Hz</span>
+                                </div>
+                                <input type="range" id="vib-slider" min="0" max="10" step="0.1" value="5" 
+                                       class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>0 Hz</span>
+                                    <span>10 Hz</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Pressure Slider -->
+                            <div class="mb-6">
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="text-sm font-medium">Pressure</label>
+                                    <span id="pressure-value" class="text-sm font-mono bg-gray-700 px-2 py-1 rounded">2.0 kPa</span>
+                                </div>
+                                <input type="range" id="pressure-slider" min="0" max="5" step="0.1" value="2" 
+                                       class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>0 kPa</span>
+                                    <span>5 kPa</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Simulation Options -->
+                            <div class="mb-6">
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="use-ml-model" class="mr-2">
+                                    <span class="text-sm">Use LSTM Model (slower but more accurate)</span>
+                                </label>
+                            </div>
+                            
+                            <!-- Run Simulation Button -->
+                            <button onclick="runSimulation()" 
+                                    class="w-full bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg transition font-medium">
+                                🔮 Run Simulation
+                            </button>
+                        </div>
+                        
+                        <!-- Results Section -->
+                        <div>
+                            <h4 class="text-lg font-medium mb-4">Simulation Results</h4>
+                            
+                            <div id="simulation-results" class="space-y-4">
+                                <!-- Default State -->
+                                <div id="sim-empty-state" class="text-center py-8 bg-gray-700 rounded-lg">
+                                    <div class="text-4xl mb-2">🔮</div>
+                                    <p class="text-gray-400">Adjust parameters and run simulation to see results</p>
+                                </div>
+                                
+                                <!-- Results Container (hidden by default) -->
+                                <div id="sim-results-container" class="hidden space-y-4">
+                                    <!-- Risk Score -->
+                                    <div class="bg-gray-700 rounded-lg p-4">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-sm text-gray-400">Risk Score</span>
+                                            <span id="risk-score" class="text-2xl font-bold">--</span>
+                                        </div>
+                                        <div class="mt-2">
+                                            <div class="w-full bg-gray-600 rounded-full h-2">
+                                                <div id="risk-bar" class="h-2 rounded-full transition-all duration-500"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Status -->
+                                    <div class="bg-gray-700 rounded-lg p-4">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-sm text-gray-400">Status</span>
+                                            <span id="sim-status" class="px-3 py-1 rounded-full text-sm font-medium">--</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Recommendation -->
+                                    <div class="bg-gray-700 rounded-lg p-4">
+                                        <div class="text-sm text-gray-400 mb-1">Recommendation</div>
+                                        <div id="sim-recommendation" class="font-medium">--</div>
+                                    </div>
+                                    
+                                    <!-- Estimated RUL -->
+                                    <div class="bg-gray-700 rounded-lg p-4">
+                                        <div class="text-sm text-gray-400 mb-1">Estimated RUL</div>
+                                        <div id="sim-rul" class="font-medium">--</div>
+                                    </div>
+                                    
+                                    <!-- Primary Risk Factor -->
+                                    <div class="bg-gray-700 rounded-lg p-4">
+                                        <div class="text-sm text-gray-400 mb-1">Primary Risk Factor</div>
+                                        <div id="sim-primary-risk" class="font-medium">--</div>
+                                    </div>
+                                    
+                                    <!-- Detailed Analysis (for ML model) -->
+                                    <div id="ml-analysis" class="hidden bg-gray-700 rounded-lg p-4">
+                                        <h5 class="text-sm font-medium mb-2">LSTM Model Analysis</h5>
+                                        <div class="space-y-2 text-sm">
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-400">Predicted RUL:</span>
+                                                <span id="ml-rul">--</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-400">Model Status:</span>
+                                                <span id="ml-status">--</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-400">Confidence:</span>
+                                                <span id="ml-confidence">--</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Risk Factors Breakdown -->
+                                    <div class="bg-gray-700 rounded-lg p-4">
+                                        <h5 class="text-sm font-medium mb-2">Risk Factor Breakdown</h5>
+                                        <div class="space-y-2">
+                                            <div class="flex justify-between items-center">
+                                                <span class="text-sm text-gray-400">Temperature</span>
+                                                <div class="flex items-center space-x-2">
+                                                    <div class="w-20 bg-gray-600 rounded-full h-1">
+                                                        <div id="temp-risk-bar" class="h-1 rounded-full bg-red-400"></div>
+                                                    </div>
+                                                    <span id="temp-risk" class="text-xs font-mono">--</span>
+                                                </div>
+                                            </div>
+                                            <div class="flex justify-between items-center">
+                                                <span class="text-sm text-gray-400">Vibration</span>
+                                                <div class="flex items-center space-x-2">
+                                                    <div class="w-20 bg-gray-600 rounded-full h-1">
+                                                        <div id="vib-risk-bar" class="h-1 rounded-full bg-orange-400"></div>
+                                                    </div>
+                                                    <span id="vib-risk" class="text-xs font-mono">--</span>
+                                                </div>
+                                            </div>
+                                            <div class="flex justify-between items-center">
+                                                <span class="text-sm text-gray-400">Pressure</span>
+                                                <div class="flex items-center space-x-2">
+                                                    <div class="w-20 bg-gray-600 rounded-full h-1">
+                                                        <div id="pressure-risk-bar" class="h-1 rounded-full bg-yellow-400"></div>
+                                                    </div>
+                                                    <span id="pressure-risk" class="text-xs font-mono">--</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Empty State -->
+                    <div id="empty-state" class="text-center py-12">
+                        <div class="text-6xl mb-4">🔧</div>
+                        <h3 class="text-xl font-medium mb-2">No Machines Active</h3>
+                        <p class="text-gray-400 mb-6">Start monitoring by adding machines or running a demo</p>
+                        <button onclick="startDemo()" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg transition">
+                            Start Demo
+                        </button>
+                    </div>
+                </main>
+            </div>
+    
+    <!-- Report Generation Modal -->
+    <div id="reportModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-gray-800 rounded-xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold">📊 Generate Report</h3>
+                <button onclick="closeReportModal()" class="text-gray-400 hover:text-white">
+                    ✕
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <!-- Report Type -->
+                <div>
+                    <label class="block text-sm font-medium mb-2">Report Type</label>
+                    <select id="reportType" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2">
+                        <option value="summary">📊 Executive Summary</option>
+                        <option value="detailed">🔍 Detailed Analysis</option>
+                        <option value="health">🏥 Health Assessment</option>
+                        <option value="performance">📈 Performance Metrics</option>
+                    </select>
+                </div>
+                
+                <!-- Format -->
+                <div>
+                    <label class="block text-sm font-medium mb-2">Format</label>
+                    <select id="reportFormat" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2">
+                        <option value="html">🌐 HTML (View in Browser)</option>
+                        <option value="json">📄 JSON (Data Export)</option>
+                        <option value="pdf">📑 PDF (Printable)</option>
+                    </select>
+                </div>
+                
+                <!-- Machine Selection -->
+                <div>
+                    <label class="block text-sm font-medium mb-2">Machine Selection</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="radio" name="machineSelection" value="all" checked class="mr-2">
+                            <span class="text-sm">All Machines</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="machineSelection" value="critical" class="mr-2">
+                            <span class="text-sm">Critical Machines Only</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="machineSelection" value="custom" class="mr-2">
+                            <span class="text-sm">Custom Selection</span>
+                        </label>
+                    </div>
+                    <div id="customMachineSelection" class="hidden space-y-2 mt-2">
+                        <div class="text-xs text-gray-400">Select machines to include:</div>
+                        <div id="machineCheckboxes" class="space-y-1">
+                            <!-- Machine checkboxes will be added dynamically -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Options -->
+                <div>
+                    <label class="block text-sm font-medium mb-2">Options</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="includeCharts" checked class="mr-2">
+                            <span class="text-sm">Include Charts & Graphs</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="includeRecommendations" checked class="mr-2">
+                            <span class="text-sm">Include Recommendations</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Date Range -->
+                <div>
+                    <label class="block text-sm font-medium mb-2">Date Range</label>
+                    <select id="dateRange" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2">
+                        <option value="today">📅 Today</option>
+                        <option value="week">📅 Last 7 Days</option>
+                        <option value="month">📅 Last 30 Days</option>
+                        <option value="all">📅 All Time</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex space-x-3 mt-6">
+                <button onclick="generateReport()" class="flex-1 bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition font-medium">
+                    📊 Generate Report
+                </button>
+                <button onclick="closeReportModal()" class="flex-1 bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg transition font-medium">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let machines = {};
+        let ws = null;
+        let charts = {};
+        let updateInterval = null;
+        let simulationState = {
+            temperature: 50,
+            vibration: 5.0,
+            pressure: 2.0,
+            use_ml_model: false
+        };
+        
+        // Initialize connection
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                updateConnectionStatus('connected');
+                console.log('🔗 WebSocket connected');
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log('🔍 WebSocket data received:', data);
+                handleWebSocketMessage(data);
+            };
+            
+            ws.onclose = () => {
+                updateConnectionStatus('disconnected');
+                console.log('🔌 WebSocket disconnected');
+                // Try to reconnect after 3 seconds
+                setTimeout(connectWebSocket, 3000);
+            };
+            
+            ws.onerror = (error) => {
+                updateConnectionStatus('error');
+                console.error('❌ WebSocket error:', error);
+            };
+        }
+        
+        // Handle WebSocket messages
+        function handleWebSocketMessage(data) {
+            if (data.type === 'sensor_update' || data.type === 'simulation_update') {
+                updateMachine(data);
+                updateSystemStats();
+                updateLastUpdateTime();
+            } else if (data.type === 'machine_reset') {
+                removeMachine(data.machine_id);
+                updateSystemStats();
+            }
+        }
+        
+        // Update machine data
+        function updateMachine(data) {
+            console.log('🤖 Updating machine:', data);
+            const machineId = data.machine_id;
+            
+            // Initialize machine if not exists
+            if (!machines[machineId]) {
+                machines[machineId] = {
+                    id: machineId,
+                    history: [],
+                    created_at: new Date()
+                };
+                charts[machineId] = null;
+            }
+            
+            // Update machine data
+            machines[machineId] = {
+                ...machines[machineId],
+                ...data,
+                temperature: data.sensor_data?.temperature || machines[machineId]?.temperature || 0,
+                vibration: data.sensor_data?.vibration || machines[machineId]?.vibration || 0,
+                pressure: data.sensor_data?.pressure || machines[machineId]?.pressure || 0,
+                last_update: new Date(),
+                history: [
+                    ...(machines[machineId].history || []),
+                    {
+                        time: new Date(),
+                        rul: data.rul,
+                        temperature: data.sensor_data?.temperature || 0,
+                        vibration: data.sensor_data?.vibration || 0,
+                        pressure: data.sensor_data?.pressure || 0
+                    }
+                ].slice(-20) // Keep last 20 data points
+            };
+            
+            // Update UI
+            renderMachineCard(machineId);
+            updateMachineChart(machineId);
+        }
+        
+        // Get machine health status
+        function getMachineHealth(machine) {
+            if (!machine.rul) return 'collecting';
+            if (machine.rul < 20) return 'critical';
+            if (machine.rul < 50) return 'warning';
+            return 'healthy';
+        }
+        
+        // Render machine card
+        function renderMachineCard(machineId) {
+            const machine = machines[machineId];
+            const grid = document.getElementById('machines-grid');
+            const emptyState = document.getElementById('empty-state');
+            
+            // Hide empty state
+            emptyState.style.display = 'none';
+            
+            // Check if card already exists
+            let card = document.getElementById(`machine-${machineId}`);
+            
+            if (!card) {
+                // Create new card
+                card = document.createElement('div');
+                card.id = `machine-${machineId}`;
+                card.className = 'machine-card bg-gray-800 rounded-xl p-6 shadow-lg';
+                grid.appendChild(card);
+            }
+            
+            // Determine health
+            const health = getMachineHealth(machine);
+            const healthColors = {
+                healthy: 'health-healthy',
+                warning: 'health-warning', 
+                critical: 'health-critical',
+                collecting: 'health-collecting'
+            };
+            
+            const statusColors = {
+                healthy: 'status-healthy',
+                warning: 'status-warning',
+                critical: 'status-critical',
+                collecting: 'status-collecting'
+            };
+            
+            const healthLabels = {
+                healthy: 'HEALTHY',
+                warning: 'WARNING',
+                critical: 'CRITICAL',
+                collecting: 'COLLECTING'
+            };
+            
+            // Update card classes
+            card.className = `machine-card bg-gray-800 rounded-xl p-6 shadow-lg ${healthColors[health]}`;
+            
+            // Format metrics
+            const rulDisplay = machine.rul !== null ? machine.rul.toFixed(1) : '--';
+            const tempDisplay = machine.sensor_data?.temperature?.toFixed(1) || machine.temperature?.toFixed(1) || '--';
+            const vibDisplay = machine.sensor_data?.vibration?.toFixed(1) || machine.vibration?.toFixed(1) || '--';
+            const pressureDisplay = machine.sensor_data?.pressure?.toFixed(1) || machine.pressure?.toFixed(1) || '--';
+            
+            card.innerHTML = `
+                <!-- Header -->
+                <div class="flex justify-between items-start mb-4">
+                    <div class="flex items-center">
+                        <span class="status-indicator ${statusColors[health]}"></span>
+                        <h3 class="text-lg font-semibold">Machine ${machineId}</h3>
+                    </div>
+                    <span class="text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300">
+                        ${machine.buffer_status || '--'}
+                    </span>
+                </div>
+                
+                <!-- RUL Display -->
+                <div class="mb-4">
+                    <div class="text-sm text-gray-400 mb-1">Remaining Useful Life</div>
+                    <div class="text-2xl font-bold metric-value">
+                        ${rulDisplay}
+                        <span class="text-sm font-normal text-gray-400">cycles</span>
+                    </div>
+                </div>
+                
+                <!-- Sensor Metrics -->
+                <div class="grid grid-cols-3 gap-2 mb-4 text-xs">
+                    <div>
+                        <div class="text-gray-400">Temp</div>
+                        <div class="font-medium">${tempDisplay}°C</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-400">Vib</div>
+                        <div class="font-medium">${vibDisplay}Hz</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-400">Press</div>
+                        <div class="font-medium">${pressureDisplay}kPa</div>
+                    </div>
+                </div>
+                
+                <!-- Health Status -->
+                <div class="mb-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium ${health === 'critical' ? 'text-red-400' : health === 'warning' ? 'text-yellow-400' : health === 'healthy' ? 'text-green-400' : 'text-gray-400'}">
+                            ${healthLabels[health]}
+                        </span>
+                        ${machine.anomaly ? `<span class="text-xs text-red-400">⚠️ ${machine.anomaly}</span>` : ''}
+                    </div>
+                </div>
+                
+                <!-- Chart -->
+                <div class="chart-container">
+                    <canvas id="chart-${machineId}"></canvas>
+                </div>
+                
+                <!-- Footer -->
+                <div class="mt-4 pt-4 border-t border-gray-700 text-xs text-gray-500">
+                    Last update: ${machine.last_update ? machine.last_update.toLocaleTimeString() : '--'}
+                </div>
+            `;
+            
+            // Apply filters
+            applyFilters();
+        }
+        
+        // Update machine chart
+        function updateMachineChart(machineId) {
+            const machine = machines[machineId];
+            if (!machine || !machine.history || machine.history.length < 2) return;
+            
+            const canvas = document.getElementById(`chart-${machineId}`);
+            if (!canvas) return;
+            
+            // Destroy existing chart
+            if (charts[machineId]) {
+                charts[machineId].destroy();
+            }
+            
+            // Create new chart
+            const ctx = canvas.getContext('2d');
+            charts[machineId] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: machine.history.map((_, i) => i),
+                    datasets: [{
+                        label: 'RUL',
+                        data: machine.history.map(h => h.rul),
+                        borderColor: machine.rul < 20 ? '#ef4444' : machine.rul < 50 ? '#f59e0b' : '#22c55e',
+                        backgroundColor: machine.rul < 20 ? 'rgba(239, 68, 68, 0.1)' : machine.rul < 50 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: { 
+                            display: false,
+                            min: 0,
+                            max: Math.max(...machine.history.map(h => h.rul || 0)) * 1.1
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update system statistics
+        function updateSystemStats() {
+            const machineList = Object.values(machines);
+            const stats = {
+                total: machineList.length,
+                healthy: 0,
+                warning: 0,
+                critical: 0,
+                collecting: 0
+            };
+            
+            machineList.forEach(machine => {
+                const health = getMachineHealth(machine);
+                stats[health]++;
+            });
+            
+            document.getElementById('active-machines').textContent = stats.total;
+            document.getElementById('healthy-count').textContent = stats.healthy;
+            document.getElementById('warning-count').textContent = stats.warning;
+            document.getElementById('critical-count').textContent = stats.critical;
+        }
+        
+        // Update connection status
+        function updateConnectionStatus(status) {
+            const indicator = document.getElementById('connection-status');
+            const text = document.getElementById('connection-text');
+            
+            const statusClasses = {
+                connected: 'status-healthy',
+                disconnected: 'status-critical',
+                error: 'status-warning'
+            };
+            
+            const statusTexts = {
+                connected: 'Connected',
+                disconnected: 'Disconnected',
+                error: 'Connection Error'
+            };
+            
+            indicator.className = `status-indicator ${statusClasses[status]}`;
+            text.textContent = statusTexts[status];
+        }
+        
+        // Update last update time
+        function updateLastUpdateTime() {
+            const now = new Date();
+            document.getElementById('last-update').textContent = `Last update: ${now.toLocaleTimeString()}`;
+        }
+        
+        // Apply filters
+        function applyFilters() {
+            const filters = {
+                healthy: document.getElementById('filter-healthy').checked,
+                warning: document.getElementById('filter-warning').checked,
+                critical: document.getElementById('filter-critical').checked,
+                collecting: document.getElementById('filter-collecting').checked
+            };
+            
+            Object.keys(machines).forEach(machineId => {
+                const machine = machines[machineId];
+                const health = getMachineHealth(machine);
+                const card = document.getElementById(`machine-${machineId}`);
+                
+                if (card) {
+                    card.style.display = filters[health] ? 'block' : 'none';
+                }
+            });
+            
+            // Show empty state if no visible cards
+            const visibleCards = document.querySelectorAll('.machine-card:not([style*="display: none"])');
+            document.getElementById('empty-state').style.display = visibleCards.length === 0 ? 'block' : 'none';
+        }
+        
+        // Control functions
+        async function startDemo() {
+            try {
+                const response = await fetch('/simulate/1?cycles=50', { method: 'POST' });
+                const result = await response.json();
+                console.log('Demo started:', result);
+                
+                // Add more machines for demo
+                for (let i = 2; i <= 5; i++) {
+                    setTimeout(() => {
+                        fetch(`/simulate/${i}?cycles=${50 + i * 10}`, { method: 'POST' });
+                    }, i * 1000);
+                }
+            } catch (error) {
+                console.error('Failed to start demo:', error);
+            }
+        }
+        
+        async function addRandomMachine() {
+            const machineId = Math.max(...Object.keys(machines).map(Number), 0) + 1;
+            try {
+                const response = await fetch(`/simulate/${machineId}?cycles=80`, { method: 'POST' });
+                console.log(`Machine ${machineId} added`);
+            } catch (error) {
+                console.error('Failed to add machine:', error);
+            }
+        }
+        
+        async function resetAllMachines() {
+            try {
+                const response = await fetch('/machines', { method: 'GET' });
+                const data = await response.json();
+                
+                for (const machine of data.machines) {
+                    await fetch(`/machines/${machine.machine_id}`, { method: 'DELETE' });
+                }
+                
+                // Clear local state
+                machines = {};
+                charts = {};
+                document.getElementById('machines-grid').innerHTML = '';
+                document.getElementById('empty-state').style.display = 'block';
+                updateSystemStats();
+                
+            } catch (error) {
+                console.error('Failed to reset machines:', error);
+            }
+        }
+        
+        function removeMachine(machineId) {
+            delete machines[machineId];
+            if (charts[machineId]) {
+                charts[machineId].destroy();
+                delete charts[machineId];
+            }
+            
+            const card = document.getElementById(`machine-${machineId}`);
+            if (card) {
+                card.remove();
+            }
+            
+            // Show empty state if no machines
+            if (Object.keys(machines).length === 0) {
+                document.getElementById('empty-state').style.display = 'block';
+            }
+        }
+        
+        // Simulation functions
+        function updateSimulationValues() {
+            // Update display values
+            document.getElementById('temp-value').textContent = simulationState.temperature + '°C';
+            document.getElementById('vib-value').textContent = simulationState.vibration.toFixed(1) + ' Hz';
+            document.getElementById('pressure-value').textContent = simulationState.pressure.toFixed(1) + ' kPa';
+        }
+        
+        async function runSimulation() {
+            try {
+                // Show loading state
+                document.getElementById('sim-empty-state').classList.add('hidden');
+                document.getElementById('sim-results-container').classList.remove('hidden');
+                
+                // Reset results
+                resetSimulationResults();
+                
+                // Prepare request
+                const requestData = {
+                    temperature: simulationState.temperature,
+                    vibration: simulationState.vibration,
+                    pressure: simulationState.pressure,
+                    use_ml_model: simulationState.use_ml_model
+                };
+                
+                // Call simulation API
+                const response = await fetch('/simulate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Simulation failed');
+                }
+                
+                const result = await response.json();
+                displaySimulationResults(result);
+                
+            } catch (error) {
+                console.error('Simulation error:', error);
+                showError('Simulation failed. Please try again.');
+            }
+        }
+        
+        function displaySimulationResults(result) {
+            if (result.method === 'LSTM_MODEL') {
+                // Display ML model results
+                const mlResult = result.ml_prediction;
+                const ruleResult = result.rule_based_comparison;
+                
+                displayRuleBasedResults(ruleResult);
+                displayMLResults(mlResult);
+                
+            } else {
+                // Display rule-based results
+                displayRuleBasedResults(result.simulation_result);
+                document.getElementById('ml-analysis').classList.add('hidden');
+            }
+        }
+        
+        function displayRuleBasedResults(result) {
+            // Update risk score
+            const riskScore = result.risk_score;
+            document.getElementById('risk-score').textContent = riskScore.toFixed(1);
+            
+            // Update risk bar
+            const riskBar = document.getElementById('risk-bar');
+            const riskPercent = Math.min(riskScore / 200 * 100, 100);
+            riskBar.style.width = riskPercent + '%';
+            
+            // Color based on risk level
+            if (riskScore > 150) {
+                riskBar.className = 'h-2 rounded-full bg-red-500 transition-all duration-500';
+            } else if (riskScore > 100) {
+                riskBar.className = 'h-2 rounded-full bg-orange-500 transition-all duration-500';
+            } else if (riskScore > 60) {
+                riskBar.className = 'h-2 rounded-full bg-yellow-500 transition-all duration-500';
+            } else {
+                riskBar.className = 'h-2 rounded-full bg-green-500 transition-all duration-500';
+            }
+            
+            // Update status
+            const statusElement = document.getElementById('sim-status');
+            statusElement.textContent = result.status;
+            
+            // Style status badge
+            statusElement.className = 'px-3 py-1 rounded-full text-sm font-medium';
+            if (result.status.includes('CRITICAL')) {
+                statusElement.className += ' bg-red-900 text-red-300';
+            } else if (result.status.includes('HIGH')) {
+                statusElement.className += ' bg-orange-900 text-orange-300';
+            } else if (result.status.includes('MODERATE')) {
+                statusElement.className += ' bg-yellow-900 text-yellow-300';
+            } else if (result.status.includes('LOW')) {
+                statusElement.className += ' bg-blue-900 text-blue-300';
+            } else {
+                statusElement.className += ' bg-green-900 text-green-300';
+            }
+            
+            // Update other fields
+            document.getElementById('sim-recommendation').textContent = result.recommendation;
+            document.getElementById('sim-rul').textContent = result.estimated_rul;
+            document.getElementById('sim-primary-risk').textContent = result.primary_risk_factor;
+            
+            // Update risk factor breakdown
+            const factors = result.factors;
+            updateRiskFactorBar('temp', factors.temperature_contribution);
+            updateRiskFactorBar('vib', factors.vibration_contribution);
+            updateRiskFactorBar('pressure', factors.pressure_contribution);
+        }
+        
+        function displayMLResults(result) {
+            document.getElementById('ml-analysis').classList.remove('hidden');
+            document.getElementById('ml-rul').textContent = result.predicted_rul.toFixed(1) + ' cycles';
+            document.getElementById('ml-status').textContent = result.ml_status;
+            document.getElementById('ml-confidence').textContent = result.confidence;
+        }
+        
+        function updateRiskFactorBar(factor, value) {
+            const maxRisk = 50; // Maximum expected risk contribution
+            const percent = Math.min(value / maxRisk * 100, 100);
+            
+            document.getElementById(`${factor}-risk-bar`).style.width = percent + '%';
+            document.getElementById(`${factor}-risk`).textContent = value.toFixed(1);
+        }
+        
+        function resetSimulationResults() {
+            document.getElementById('risk-score').textContent = '--';
+            document.getElementById('risk-bar').style.width = '0%';
+            document.getElementById('sim-status').textContent = '--';
+            document.getElementById('sim-recommendation').textContent = '--';
+            document.getElementById('sim-rul').textContent = '--';
+            document.getElementById('sim-primary-risk').textContent = '--';
+            document.getElementById('ml-analysis').classList.add('hidden');
+            
+            // Reset risk factor bars
+            ['temp', 'vib', 'pressure'].forEach(factor => {
+                document.getElementById(`${factor}-risk-bar`).style.width = '0%';
+                document.getElementById(`${factor}-risk`).textContent = '--';
+            });
+        }
+        
+        function showError(message) {
+            // You could implement a toast notification here
+            console.error(message);
+            alert(message); // Simple fallback
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            connectWebSocket();
+            
+            // Set up filter listeners
+            ['healthy', 'warning', 'critical', 'collecting'].forEach(filter => {
+                document.getElementById(`filter-${filter}`).addEventListener('change', applyFilters);
+            });
+            
+            // Set up simulation sliders
+            document.getElementById('temp-slider').addEventListener('input', (e) => {
+                simulationState.temperature = parseFloat(e.target.value);
+                updateSimulationValues();
+            });
+            
+            document.getElementById('vib-slider').addEventListener('input', (e) => {
+                simulationState.vibration = parseFloat(e.target.value);
+                updateSimulationValues();
+            });
+            
+            document.getElementById('pressure-slider').addEventListener('input', (e) => {
+                simulationState.pressure = parseFloat(e.target.value);
+                updateSimulationValues();
+            });
+            
+            document.getElementById('use-ml-model').addEventListener('change', (e) => {
+                simulationState.use_ml_model = e.target.checked;
+            });
+            
+            // Initialize simulation values
+            updateSimulationValues();
+            
+            // Update system stats periodically
+            updateInterval = setInterval(updateSystemStats, 5000);
+            
+            console.log('🚀 TwinMind Digital Twin initialized');
+        });
+        
+        // Report Generation Functions
+        function openReportModal() {
+            document.getElementById('reportModal').classList.remove('hidden');
+            updateMachineCheckboxes();
+        }
+        
+        function closeReportModal() {
+            document.getElementById('reportModal').classList.add('hidden');
+        }
+        
+        function updateMachineCheckboxes() {
+            const container = document.getElementById('machineCheckboxes');
+            const machineIds = Object.keys(machines);
+            
+            if (machineIds.length === 0) {
+                container.innerHTML = '<div class="text-xs text-gray-500">No machines available</div>';
+                return;
+            }
+            
+            container.innerHTML = machineIds.map(id => `
+                <label class="flex items-center">
+                    <input type="checkbox" value="${id}" class="mr-2">
+                    <span class="text-sm">Machine ${id}</span>
+                </label>
+            `).join('');
+        }
+        
+        // Handle machine selection radio buttons
+        document.addEventListener('DOMContentLoaded', () => {
+            const radioButtons = document.querySelectorAll('input[name="machineSelection"]');
+            const customSelection = document.getElementById('customMachineSelection');
+            
+            radioButtons.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    if (e.target.value === 'custom') {
+                        customSelection.classList.remove('hidden');
+                    } else {
+                        customSelection.classList.add('hidden');
+                    }
+                });
+            });
+        });
+        
+        async function generateReport() {
+            try {
+                // Show loading state
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = '⏳ Generating...';
+                button.disabled = true;
+                
+                // Collect form data
+                const reportType = document.getElementById('reportType').value;
+                const format = document.getElementById('reportFormat').value;
+                const includeCharts = document.getElementById('includeCharts').checked;
+                const includeRecommendations = document.getElementById('includeRecommendations').checked;
+                const dateRange = document.getElementById('dateRange').value;
+                
+                // Get selected machines
+                let machineIds = null;
+                const machineSelection = document.querySelector('input[name="machineSelection"]:checked').value;
+                
+                if (machineSelection === 'critical') {
+                    machineIds = Object.keys(machines).filter(id => 
+                        machines[id].health === 'CRITICAL'
+                    );
+                } else if (machineSelection === 'custom') {
+                    const checkboxes = document.querySelectorAll('#machineCheckboxes input[type="checkbox"]:checked');
+                    machineIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+                }
+                
+                // Prepare request
+                const reportRequest = {
+                    report_type: reportType,
+                    machine_ids: machineIds,
+                    date_range: getDateRangeObject(dateRange),
+                    format: format,
+                    include_charts: includeCharts,
+                    include_recommendations: includeRecommendations
+                };
+                
+                // Generate report
+                const response = await fetch('/generate-report', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(reportRequest)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Report generation failed');
+                }
+                
+                // Handle response based on format
+                if (format === 'json') {
+                    const reportData = await response.json();
+                    downloadJSON(reportData, `digital-twin-report-${reportType}-${Date.now()}.json`);
+                } else {
+                    // For HTML and PDF, open in new window
+                    const htmlContent = await response.text();
+                    const newWindow = window.open('', '_blank');
+                    newWindow.document.write(htmlContent);
+                    newWindow.document.close();
+                }
+                
+                // Close modal and reset button
+                closeReportModal();
+                button.textContent = originalText;
+                button.disabled = false;
+                
+                // Show success message
+                showNotification('✅ Report generated successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Report generation error:', error);
+                event.target.textContent = originalText;
+                event.target.disabled = false;
+                showNotification('❌ Failed to generate report', 'error');
+            }
+        }
+        
+        function getDateRangeObject(range) {
+            const now = new Date();
+            let startDate = new Date();
+            
+            switch(range) {
+                case 'today':
+                    startDate.setHours(0, 0, 0, 0);
+                    break;
+                case 'week':
+                    startDate.setDate(now.getDate() - 7);
+                    break;
+                case 'month':
+                    startDate.setDate(now.getDate() - 30);
+                    break;
+                case 'all':
+                default:
+                    startDate = new Date(0); // Unix epoch
+                    break;
+            }
+            
+            return {
+                start: startDate.toISOString(),
+                end: now.toISOString()
+            };
+        }
+        
+        function downloadJSON(data, filename) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        function showNotification(message, type) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 px-4 py-2 rounded-lg text-sm z-50 ${
+                type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+            }`;
+            notification.textContent = message;
+            
+            // Add to page
+            document.body.appendChild(notification);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 3000);
+        }
+
+        // Cleanup
+        window.addEventListener('beforeunload', () => {
+            if (ws) ws.close();
+            if (updateInterval) clearInterval(updateInterval);
+        });
+    </script>
+</body>
+</html>

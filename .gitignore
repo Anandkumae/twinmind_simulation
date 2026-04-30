@@ -1,0 +1,396 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+#   install all needed dependencies.
+#Pipfile.lock
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# TensorFlow / Machine Learning Models
+*.h5
+*.hdf5
+*.pb
+*.ckpt
+*.pth
+*.pkl
+*.joblib
+*.model
+*.weights
+
+# Data files
+*.csv
+*.json
+*.xlsx
+*.xls
+*.parquet
+*.feather
+*.hdf
+*.pkl.gz
+*.zip
+*.tar.gz
+*.rar
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows specific
+*.lnk
+*.url
+
+# Linux specific
+*~
+
+# macOS specific
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+
+# Log files
+*.log
+logs/
+*.out
+*.err
+
+# Configuration files with secrets
+config.py
+secrets.json
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.mdb
+*.accdb
+
+# Large binary files
+*.bin
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.7z
+*.rar
+
+# Documentation build
+docs/build/
+docs/_build/
+site/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# Profiling
+*.prof
+*.profile
+
+# Monitoring and metrics
+metrics/
+monitoring/
+*.metrics
+
+# Backup and archive
+backup/
+archive/
+old/
+deprecated/
+
+# Test outputs
+test_results/
+test_output/
+*.test
+*.tests
+
+# Development artifacts
+scratch/
+experimental/
+prototype/
+sandbox/
+
+# Node.js (if using for frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Frontend build artifacts
+dist/
+build/
+*.min.js
+*.min.css
+*.bundle.js
+*.bundle.css
+
+# Local development
+local/
+dev/
+development/
+
+# Production artifacts
+production/
+prod/
+
+# User-specific files
+user_data/
+user_config/
+*.user
+*.local
+
+# Temporary notebooks and experiments
+notebooks/temp/
+experiments/
+sandbox/
+
+# Model checkpoints and training artifacts
+checkpoints/
+runs/
+wandb/
+mlruns/
+*.ckpt.*
+
+# Data processing artifacts
+processed/
+intermediate/
+temp_data/
+
+# Security and certificates
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+
+# Performance profiling
+*.prof
+*.profile
+*.trace
+
+# System files
+*.pid
+*.lock
+*.sock
+
+# Digital Twin specific
+# Trained models (keep examples, exclude large production models)
+!lstm_rul_model.h5
+!scaler.pkl
+
+# Keep example data but exclude large datasets
+!test_results.csv
+!archive/train_FD001.txt
+!archive/test_FD001.txt
+!archive/RUL_FD001.txt
+
+# Exclude large training datasets
+archive/train_FD00*.txt
+archive/test_FD00*.txt
+archive/RUL_FD00*.txt
+*.mat
+*.npy
+
+# Exclude large model files (>100MB)
+*.h5
+*.pb
+*.pth
+*.ckpt
+
+# Keep configuration files
+!requirements.txt
+!config.json
+!settings.json
+
+# Keep documentation
+!README.md
+!USAGE.md
+!*.md
+
+# Keep small test files
+!test_*.py
+!demo_*.py
+
+# API and web files
+!*.html
+!*.css
+!*.js
+!static/
+!templates/
+
+# Docker files (keep for deployment)
+!Dockerfile
+!docker-compose.yml
+!.dockerignore
+
+# CI/CD files (keep for automation)
+!.github/
+!.gitlab-ci.yml
+!.travis.yml
+!.circleci/
+
+# Development tools
+!Makefile
+!setup.py
+!pyproject.toml
+node_modules

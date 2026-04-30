@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RUL Prediction Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @keyframes pulse-red {
+            0%, 100% { background-color: rgb(239 68 68); }
+            50% { background-color: rgb(220 38 38); }
+        }
+        .critical-pulse {
+            animation: pulse-red 2s infinite;
+        }
+        .health-healthy { color: rgb(34 197 94); }
+        .health-warning { color: rgb(251 146 60); }
+        .health-critical { color: rgb(239 68 68); }
+        .health-collecting { color: rgb(107 114 128); }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-center mb-2">🔧 RUL Prediction Dashboard</h1>
+            <p class="text-center text-gray-400">Real-time Remaining Useful Life Monitoring</p>
+            <div class="text-center mt-4">
+                <span id="connection-status" class="px-3 py-1 rounded-full bg-gray-700 text-sm">
+                    🔌 Connecting...
+                </span>
+                <span id="active-machines" class="ml-2 px-3 py-1 rounded-full bg-blue-700 text-sm">
+                    📊 Machines: 0
+                </span>
+            </div>
+        </header>
+
+        <!-- Main Dashboard -->
+        <main>
+            <!-- Machine Cards Grid -->
+            <div id="machines-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <!-- Machine cards will be inserted here -->
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <!-- RUL Timeline Chart -->
+                <div class="bg-gray-800 rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">📈 RUL Timeline</h2>
+                    <canvas id="rul-chart"></canvas>
+                </div>
+
+                <!-- Health Distribution Chart -->
+                <div class="bg-gray-800 rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">🏥 Health Distribution</h2>
+                    <canvas id="health-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Control Panel -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">🎮 Control Panel</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <h3 class="text-sm font-medium mb-2">Quick Simulation</h3>
+                        <button onclick="startQuickSimulation()" class="w-full bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded transition">
+                            🚀 Start Demo (3 machines)
+                        </button>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium mb-2">Add Machine</h3>
+                        <div class="flex gap-2">
+                            <input type="number" id="machine-id" placeholder="ID" min="1" class="bg-gray-700 px-3 py-2 rounded flex-1">
+                            <button onclick="addMachine()" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded transition">
+                                ➕ Add
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium mb-2">Reset All</h3>
+                        <button onclick="resetAllMachines()" class="w-full bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition">
+                            🔄 Reset All
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Log -->
+            <div class="bg-gray-800 rounded-lg p-6 mt-6">
+                <h2 class="text-xl font-semibold mb-4">📋 Activity Log</h2>
+                <div id="activity-log" class="space-y-2 max-h-64 overflow-y-auto">
+                    <!-- Activity items will be inserted here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Global state
+        let machines = {};
+        let ws = null;
+        let rulChart = null;
+        let healthChart = null;
+        let rulHistory = {};
+
+        // Initialize charts
+        function initCharts() {
+            // RUL Timeline Chart
+            const rulCtx = document.getElementById('rul-chart').getContext('2d');
+            rulChart = new Chart(rulCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: []
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'RUL (cycles)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#9CA3AF' }
+                        },
+                        x: {
+                            title: { display: true, text: 'Time' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#9CA3AF' }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#9CA3AF' } }
+                    }
+                }
+            });
+
+            // Health Distribution Chart
+            const healthCtx = document.getElementById('health-chart').getContext('2d');
+            healthChart = new Chart(healthCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['HEALTHY', 'WARNING', 'CRITICAL', 'COLLECTING'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: [
+                            'rgb(34, 197, 94)',
+                            'rgb(251, 146, 60)',
+                            'rgb(239, 68, 68)',
+                            'rgb(107, 114, 128)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#9CA3AF' } }
+                    }
+                }
+            });
+        }
+
+        // WebSocket connection
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                updateConnectionStatus('🟢 Connected', 'green');
+                addActivity('🔗 Connected to server', 'success');
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+            
+            ws.onclose = () => {
+                updateConnectionStatus('🔴 Disconnected', 'red');
+                addActivity('🔌 Disconnected from server', 'error');
+                // Try to reconnect after 3 seconds
+                setTimeout(connectWebSocket, 3000);
+            };
+            
+            ws.onerror = (error) => {
+                updateConnectionStatus('🟡 Error', 'yellow');
+                addActivity('❌ WebSocket error', 'error');
+            };
+        }
+
+        // Handle WebSocket messages
+        function handleWebSocketMessage(data) {
+            if (data.type === 'sensor_update') {
+                updateMachine(data);
+                addActivity(`📊 Machine ${data.machine_id}: RUL=${data.rul?.toFixed(2) || 'N/A'}`, 'info');
+            } else if (data.type === 'machine_reset') {
+                removeMachine(data.machine_id);
+                addActivity(`🔄 Machine ${data.machine_id} reset`, 'warning');
+            } else if (data.type === 'simulation_update') {
+                updateMachine(data);
+            }
+        }
+
+        // Update machine data
+        function updateMachine(data) {
+            const machineId = data.machine_id;
+            
+            // Initialize machine if not exists
+            if (!machines[machineId]) {
+                machines[machineId] = {
+                    id: machineId,
+                    rul: null,
+                    health: 'COLLECTING',
+                    anomaly: null,
+                    buffer_status: '0/30',
+                    sensor_data: {},
+                    last_update: new Date()
+                };
+                rulHistory[machineId] = [];
+            }
+            
+            // Update machine data
+            machines[machineId] = {
+                ...machines[machineId],
+                rul: data.rul,
+                health: data.health || 'COLLECTING',
+                anomaly: data.anomaly,
+                buffer_status: data.buffer_status,
+                sensor_data: data.sensor_data || {},
+                last_update: new Date()
+            };
+            
+            // Update RUL history for chart
+            if (data.rul !== null) {
+                rulHistory[machineId].push({
+                    time: new Date(),
+                    rul: data.rul
+                });
+                
+                // Keep only last 50 points
+                if (rulHistory[machineId].length > 50) {
+                    rulHistory[machineId].shift();
+                }
+            }
+            
+            // Update UI
+            renderMachineCard(machineId);
+            updateCharts();
+            updateActiveMachinesCount();
+        }
+
+        // Render machine card
+        function renderMachineCard(machineId) {
+            const machine = machines[machineId];
+            const grid = document.getElementById('machines-grid');
+            
+            // Check if card already exists
+            let card = document.getElementById(`machine-${machineId}`);
+            
+            if (!card) {
+                // Create new card
+                card = document.createElement('div');
+                card.id = `machine-${machineId}`;
+                card.className = 'bg-gray-800 rounded-lg p-6 transition-all duration-300';
+                grid.appendChild(card);
+            }
+            
+            // Determine health color
+            let healthColor = 'health-collecting';
+            let bgClass = 'bg-gray-800';
+            if (machine.health === 'HEALTHY') {
+                healthColor = 'health-healthy';
+                bgClass = 'bg-gray-800';
+            } else if (machine.health === 'WARNING') {
+                healthColor = 'health-warning';
+                bgClass = 'bg-yellow-900';
+            } else if (machine.health === 'CRITICAL') {
+                healthColor = 'health-critical';
+                bgClass = 'bg-red-900 critical-pulse';
+            }
+            
+            card.className = `${bgClass} rounded-lg p-6 transition-all duration-300`;
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-lg font-semibold">🔧 Machine ${machineId}</h3>
+                    <span class="${healthColor} font-medium">${machine.health}</span>
+                </div>
+                
+                <div class="space-y-3">
+                    <div>
+                        <div class="text-sm text-gray-400">RUL (Remaining Useful Life)</div>
+                        <div class="text-2xl font-bold">
+                            ${machine.rul !== null ? machine.rul.toFixed(2) + ' cycles' : 'Collecting data...'}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="text-sm text-gray-400">Buffer Status</div>
+                        <div class="text-sm">${machine.buffer_status}</div>
+                    </div>
+                    
+                    ${machine.anomaly ? `
+                        <div class="bg-red-800 border border-red-600 rounded px-3 py-2">
+                            <div class="text-sm font-medium">⚠️ ${machine.anomaly}</div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="text-xs text-gray-500">
+                        Last update: ${machine.last_update.toLocaleTimeString()}
+                    </div>
+                </div>
+                
+                <div class="mt-4 pt-4 border-t border-gray-700">
+                    <button onclick="resetMachine(${machineId})" class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded transition">
+                        🔄 Reset
+                    </button>
+                </div>
+            `;
+        }
+
+        // Update charts
+        function updateCharts() {
+            // Update RUL timeline chart
+            const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+            const datasets = [];
+            
+            Object.keys(rulHistory).forEach((machineId, index) => {
+                const history = rulHistory[machineId];
+                if (history.length > 0) {
+                    datasets.push({
+                        label: `Machine ${machineId}`,
+                        data: history.map(h => h.rul),
+                        borderColor: colors[index % colors.length],
+                        backgroundColor: colors[index % colors.length] + '20',
+                        tension: 0.4
+                    });
+                }
+            });
+            
+            rulChart.data.datasets = datasets;
+            rulChart.update();
+            
+            // Update health distribution chart
+            const healthCounts = {
+                'HEALTHY': 0,
+                'WARNING': 0,
+                'CRITICAL': 0,
+                'COLLECTING': 0
+            };
+            
+            Object.values(machines).forEach(machine => {
+                healthCounts[machine.health]++;
+            });
+            
+            healthChart.data.datasets[0].data = Object.values(healthCounts);
+            healthChart.update();
+        }
+
+        // Update connection status
+        function updateConnectionStatus(text, color) {
+            const status = document.getElementById('connection-status');
+            status.textContent = text;
+            status.className = `px-3 py-1 rounded-full text-sm bg-${color}-700`;
+        }
+
+        // Update active machines count
+        function updateActiveMachinesCount() {
+            const count = Object.keys(machines).length;
+            document.getElementById('active-machines').textContent = `📊 Machines: ${count}`;
+        }
+
+        // Add activity log entry
+        function addActivity(message, type = 'info') {
+            const log = document.getElementById('activity-log');
+            const entry = document.createElement('div');
+            
+            const colors = {
+                'info': 'bg-blue-800',
+                'success': 'bg-green-800',
+                'warning': 'bg-yellow-800',
+                'error': 'bg-red-800'
+            };
+            
+            const time = new Date().toLocaleTimeString();
+            entry.className = `${colors[type]} rounded px-3 py-2 text-sm`;
+            entry.innerHTML = `<span class="text-gray-400">${time}</span> ${message}`;
+            
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+            
+            // Keep only last 50 entries
+            while (log.children.length > 50) {
+                log.removeChild(log.firstChild);
+            }
+        }
+
+        // Control panel functions
+        async function startQuickSimulation() {
+            addActivity('🚀 Starting demo simulation...', 'info');
+            
+            try {
+                const response = await fetch('/simulate/1?cycles=30', { method: 'POST' });
+                const result = await response.json();
+                addActivity(`✅ Demo started: ${result.cycles_simulated} cycles`, 'success');
+            } catch (error) {
+                addActivity(`❌ Demo failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function addMachine() {
+            const machineId = parseInt(document.getElementById('machine-id').value);
+            if (!machineId || machineId < 1) {
+                addActivity('❌ Invalid machine ID', 'error');
+                return;
+            }
+            
+            addActivity(`🆕 Adding machine ${machineId}...`, 'info');
+            
+            try {
+                const response = await fetch('/simulate/' + machineId + '?cycles=50', { method: 'POST' });
+                const result = await response.json();
+                addActivity(`✅ Machine ${machineId} added`, 'success');
+            } catch (error) {
+                addActivity(`❌ Failed to add machine: ${error.message}`, 'error');
+            }
+            
+            document.getElementById('machine-id').value = '';
+        }
+
+        async function resetMachine(machineId) {
+            addActivity(`🔄 Resetting machine ${machineId}...`, 'warning');
+            
+            try {
+                const response = await fetch(`/machines/${machineId}`, { method: 'DELETE' });
+                addActivity(`✅ Machine ${machineId} reset`, 'success');
+            } catch (error) {
+                addActivity(`❌ Failed to reset machine: ${error.message}`, 'error');
+            }
+        }
+
+        async function resetAllMachines() {
+            addActivity('🔄 Resetting all machines...', 'warning');
+            
+            try {
+                const response = await fetch('/machines', { method: 'GET' });
+                const data = await response.json();
+                
+                for (const machine of data.machines) {
+                    await fetch(`/machines/${machine.machine_id}`, { method: 'DELETE' });
+                }
+                
+                addActivity('✅ All machines reset', 'success');
+            } catch (error) {
+                addActivity(`❌ Failed to reset machines: ${error.message}`, 'error');
+            }
+        }
+
+        function removeMachine(machineId) {
+            delete machines[machineId];
+            delete rulHistory[machineId];
+            
+            const card = document.getElementById(`machine-${machineId}`);
+            if (card) {
+                card.remove();
+            }
+            
+            updateCharts();
+            updateActiveMachinesCount();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            connectWebSocket();
+            addActivity('🚀 Dashboard initialized', 'success');
+        });
+    </script>
+</body>
+</html>
